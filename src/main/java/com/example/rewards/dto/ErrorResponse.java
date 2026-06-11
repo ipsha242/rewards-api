@@ -1,4 +1,4 @@
-package com.example.rewards.DTO;
+package com.example.rewards.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

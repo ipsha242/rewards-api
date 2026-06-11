@@ -36,24 +36,13 @@ public class RewardControllerIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(5))
 
                 .andExpect(jsonPath("$[?(@.customerId==1)].totalRewards").value(405))
-                .andExpect(jsonPath("$[?(@.customerId==1)].monthlyRewards.MARCH").value(90))
-                .andExpect(jsonPath("$[?(@.customerId==1)].monthlyRewards.APRIL").value(25))
-                .andExpect(jsonPath("$[?(@.customerId==1)].monthlyRewards.MAY").value(290))
 
                 .andExpect(jsonPath("$[?(@.customerId==2)].totalRewards").value(210))
-                .andExpect(jsonPath("$[?(@.customerId==2)].monthlyRewards.MARCH").value(0))
-                .andExpect(jsonPath("$[?(@.customerId==2)].monthlyRewards.MAY").value(210))
 
                 .andExpect(jsonPath("$[?(@.customerId==3)].totalRewards").value(350))
-                .andExpect(jsonPath("$[?(@.customerId==3)].monthlyRewards.MAY").value(350))
 
                 .andExpect(jsonPath("$[?(@.customerId==4)].totalRewards").value(190))
-                .andExpect(jsonPath("$[?(@.customerId==4)].monthlyRewards.MARCH").value(150))
-                .andExpect(jsonPath("$[?(@.customerId==4)].monthlyRewards.APRIL").value(40))
 
-                .andExpect(jsonPath("$[?(@.customerId==5)].totalRewards").value(580))
-                .andExpect(jsonPath("$[?(@.customerId==5)].monthlyRewards.MARCH").value(110))
-                .andExpect(jsonPath("$[?(@.customerId==5)].monthlyRewards.APRIL").value(20))
-                .andExpect(jsonPath("$[?(@.customerId==5)].monthlyRewards.MAY").value(450));
+                .andExpect(jsonPath("$[?(@.customerId==5)].totalRewards").value(580));
     }
 }

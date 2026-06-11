@@ -1,6 +1,6 @@
 package com.example.rewards.exception;
 
-import com.example.rewards.DTO.ErrorResponse;
+import com.example.rewards.dto.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;

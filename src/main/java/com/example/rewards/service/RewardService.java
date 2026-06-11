@@ -1,6 +1,6 @@
 package com.example.rewards.service;
 
-import com.example.rewards.DTO.RewardDTO;
+import com.example.rewards.dto.RewardDTO;
 import com.example.rewards.entity.Transaction;
 
 import java.util.List;

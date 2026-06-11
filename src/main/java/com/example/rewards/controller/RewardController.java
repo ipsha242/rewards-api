@@ -1,8 +1,7 @@
 package com.example.rewards.controller;
 
-import com.example.rewards.DTO.RewardDTO;
+import com.example.rewards.dto.RewardDTO;
 import com.example.rewards.entity.Transaction;
-import com.example.rewards.repository.RewardRepository;
 import com.example.rewards.service.RewardService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

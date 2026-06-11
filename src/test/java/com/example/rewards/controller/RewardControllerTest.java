@@ -1,6 +1,7 @@
 package com.example.rewards.controller;
 
-import com.example.rewards.DTO.RewardDTO;
+import com.example.rewards.dto.RewardDTO;
+import com.example.rewards.entity.Customer;
 import com.example.rewards.entity.Transaction;
 import com.example.rewards.exception.RewardException;
 import com.example.rewards.service.RewardService;
@@ -13,12 +14,15 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -39,16 +43,20 @@ public class RewardControllerTest {
     private RewardService rewardService;
 
     private Transaction sampleTransaction;
+    private Customer customer;
     private RewardDTO sampleRewardDTO;
 
 
     @BeforeEach
     void setUp() {
+        customer = new Customer();
+        customer.setId(101L);
+        customer.setName("John Doe");
+
         sampleTransaction = new Transaction();
         sampleTransaction.setId(1L);
-        sampleTransaction.setCustomerId(101L);
-        sampleTransaction.setCustomerName("John Doe");
-        sampleTransaction.setAmount(150.0);
+        sampleTransaction.setCustomer(customer);
+        sampleTransaction.setAmount(BigDecimal.valueOf(150.0));
         sampleTransaction.setTransactionDate(LocalDate.of(2026, 3, 15));
 
         sampleRewardDTO = new RewardDTO();
