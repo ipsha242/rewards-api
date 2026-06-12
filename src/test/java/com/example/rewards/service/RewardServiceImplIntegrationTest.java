@@ -7,10 +7,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Integration tests for RewardServiceImpl.
@@ -33,22 +36,42 @@ public class RewardServiceImplIntegrationTest {
 
         RewardDTO john = result.stream().filter(r -> r.getCustomerId() == 1L).findFirst().orElseThrow();
         assertEquals("John", john.getCustomerName());
-        assertEquals(405, john.getTotalRewards());
+        assertEquals(0, BigDecimal.valueOf(405).compareTo(john.getTotalRewards()));
 
         RewardDTO david = result.stream().filter(r -> r.getCustomerId() == 2L).findFirst().orElseThrow();
         assertEquals("David", david.getCustomerName());
-        assertEquals(210, david.getTotalRewards());
+        assertEquals(0, BigDecimal.valueOf(210).compareTo(david.getTotalRewards()));
 
         RewardDTO lucas = result.stream().filter(r -> r.getCustomerId() == 3L).findFirst().orElseThrow();
         assertEquals("Lucas", lucas.getCustomerName());
-        assertEquals(350, lucas.getTotalRewards());
+        assertEquals(0, BigDecimal.valueOf(350).compareTo(lucas.getTotalRewards()));
 
         RewardDTO sarah = result.stream().filter(r -> r.getCustomerId() == 4L).findFirst().orElseThrow();
         assertEquals("Sarah", sarah.getCustomerName());
-        assertEquals(190, sarah.getTotalRewards());
+        assertEquals(0, BigDecimal.valueOf(190).compareTo(sarah.getTotalRewards()));
 
         RewardDTO sharon = result.stream().filter(r -> r.getCustomerId() == 5L).findFirst().orElseThrow();
         assertEquals("Sharon", sharon.getCustomerName());
-        assertEquals(580, sharon.getTotalRewards());
+        assertEquals(0, BigDecimal.valueOf(580).compareTo(sharon.getTotalRewards()));
+    }
+
+    @Test
+    void getRewardsByDateRange_ValidRange_ReturnsRewards() {
+
+        List<RewardDTO> result = rewardService.getRewardsByDateRange(
+                        LocalDate.now().minusMonths(3),
+                        LocalDate.now());
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+    }
+
+    @Test
+    void getRewardsByCustomerId_ReturnsCustomerRewards() {
+
+        RewardDTO result = rewardService.getRewardsByCustomerId(1L, null, null);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getCustomerId());
     }
 }

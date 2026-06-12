@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
 /**
@@ -25,9 +26,9 @@ public class RewardDTO {
     private String customerName;
 
     @NotNull
-    private Map<String, Integer> monthlyRewards;
+    private Map<String, BigDecimal> monthlyRewards;
 
     @NotNull
     @PositiveOrZero
-    private Integer totalRewards;
+    private BigDecimal totalRewards;
 }

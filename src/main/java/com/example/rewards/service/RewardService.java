@@ -3,6 +3,7 @@ package com.example.rewards.service;
 import com.example.rewards.dto.RewardDTO;
 import com.example.rewards.entity.Transaction;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -10,7 +11,10 @@ import java.util.List;
  */
 public interface RewardService {
 
-    Transaction saveTransaction(Transaction transaction);
 
     List<RewardDTO> getRewards();
+
+    List<RewardDTO> getRewardsByDateRange(LocalDate startDate, LocalDate endDate);
+
+    RewardDTO getRewardsByCustomerId(Long customerId, LocalDate starDate, LocalDate endDate);
 }

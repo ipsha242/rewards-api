@@ -21,7 +21,11 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 
 /**
  * Unit tests for RewardServiceImpl.
@@ -64,8 +68,8 @@ public class RewardServiceImplTest {
         RewardDTO dto = result.get(0);
         assertEquals(1L, dto.getCustomerId());
         assertEquals("Alice", dto.getCustomerName());
-        assertEquals(90, dto.getTotalRewards());
-        assertEquals(90, dto.getMonthlyRewards().get("MARCH"));
+        assertEquals(0, BigDecimal.valueOf(90).compareTo(dto.getTotalRewards()));
+        assertEquals(0, BigDecimal.valueOf(90).compareTo(dto.getMonthlyRewards().get("2024-03")));
     }
 
     @Test
@@ -77,7 +81,7 @@ public class RewardServiceImplTest {
 
         List<RewardDTO> result = transactionService.getRewards();
 
-        assertEquals(25, result.get(0).getTotalRewards());
+        assertEquals(0, BigDecimal.valueOf(25).compareTo(result.get(0).getTotalRewards()));
     }
 
     @Test
@@ -89,7 +93,7 @@ public class RewardServiceImplTest {
 
         List<RewardDTO> result = transactionService.getRewards();
 
-        assertEquals(50, result.get(0).getTotalRewards());
+        assertEquals(0, BigDecimal.valueOf(50).compareTo(result.get(0).getTotalRewards()));
     }
 
     @Test
@@ -101,7 +105,7 @@ public class RewardServiceImplTest {
 
         List<RewardDTO> result = transactionService.getRewards();
 
-        assertEquals(0, result.get(0).getTotalRewards());
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.get(0).getTotalRewards()));
     }
 
     @Test
@@ -113,7 +117,7 @@ public class RewardServiceImplTest {
 
         List<RewardDTO> result = transactionService.getRewards();
 
-        assertEquals(0, result.get(0).getTotalRewards());
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.get(0).getTotalRewards()));
     }
 
     @Test
@@ -140,9 +144,9 @@ public class RewardServiceImplTest {
 
         assertEquals(1, result.size());
         RewardDTO dto = result.get(0);
-        assertEquals(115, dto.getTotalRewards());
-        assertEquals(90, dto.getMonthlyRewards().get("JANUARY"));
-        assertEquals(25, dto.getMonthlyRewards().get("FEBRUARY"));
+        assertEquals(0, BigDecimal.valueOf(115).compareTo(dto.getTotalRewards()));
+        assertEquals(0, BigDecimal.valueOf(90).compareTo(dto.getMonthlyRewards().get("2024-01")));
+        assertEquals(0, BigDecimal.valueOf(25).compareTo(dto.getMonthlyRewards().get("2024-02")));
     }
 
     @Test
@@ -167,8 +171,8 @@ public class RewardServiceImplTest {
 
         List<RewardDTO> result = transactionService.getRewards();
 
-        assertEquals(100, result.get(0).getTotalRewards());
-        assertEquals(100, result.get(0).getMonthlyRewards().get("MARCH"));
+        assertEquals(0, BigDecimal.valueOf(100).compareTo(result.get(0).getTotalRewards()));
+        assertEquals(0, BigDecimal.valueOf(100).compareTo(result.get(0).getMonthlyRewards().get("2024-03")));
     }
 
     @Test
@@ -257,5 +261,146 @@ public class RewardServiceImplTest {
         RewardException ex = assertThrows(RewardException.class,
                 () -> transactionService.getRewards());
         assertEquals("Transaction date is required", ex.getMessage());
+    }
+
+    @Test
+    void getRewardsByDateRange_NullDates_UsesFindAll() {
+
+        when(rewardRepository.findAll()).thenReturn(List.of(transaction));
+
+        List<RewardDTO> result = transactionService.getRewardsByDateRange(null, null);
+
+        assertEquals(1, result.size());
+
+        verify(rewardRepository, times(1)).findAll();
+        verify(rewardRepository, never()).findByTransactionDateBetween(any(), any());
+    }
+
+    @Test
+    void getRewardsByDateRange_StartDateAfterEndDate_ThrowsException() {
+
+        RewardException ex = assertThrows(RewardException.class,
+                () -> transactionService.getRewardsByDateRange(
+                        LocalDate.of(2026, 6, 1),
+                        LocalDate.of(2026, 5, 1))
+        );
+
+        assertEquals("Start date cannot be after end date", ex.getMessage());
+    }
+
+    @Test
+    void getRewardsByDateRange_ValidDates_ReturnsRewards() {
+
+        when(rewardRepository.findByTransactionDateBetween(any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(List.of(transaction));
+
+        List<RewardDTO> result = transactionService.getRewardsByDateRange(
+                        LocalDate.of(2026, 3, 1),
+                        LocalDate.of(2026, 5, 31));
+
+        assertEquals(1, result.size());
+        assertEquals(0, BigDecimal.valueOf(90).compareTo(result.get(0).getTotalRewards()));
+    }
+
+    @Test
+    void getRewardsByDateRange_EndDateNull_ThrowsException() {
+
+        RewardException ex = assertThrows(RewardException.class,
+                () -> transactionService.getRewardsByDateRange(
+                        LocalDate.of(2026, 3, 1), null));
+
+        assertEquals("Both start date and end date must be provided", ex.getMessage());
+    }
+
+    @Test
+    void getRewardsByDateRange_StartDateNull_ThrowsException() {
+
+        RewardException ex = assertThrows(RewardException.class,
+                () -> transactionService.getRewardsByDateRange(null,
+                        LocalDate.of(2026, 5, 31)));
+
+        assertEquals("Both start date and end date must be provided", ex.getMessage());
+    }
+
+    @Test
+    void getRewardsByCustomerId_ValidCustomer_ReturnsRewards() {
+
+        when(rewardRepository.findByCustomer_Id(1L)).thenReturn(List.of(transaction));
+
+        RewardDTO result = transactionService.getRewardsByCustomerId(
+                        1L,
+                        null,
+                        null);
+
+        assertEquals(1L, result.getCustomerId());
+        assertEquals("Alice", result.getCustomerName());
+        assertEquals(0, BigDecimal.valueOf(90).compareTo(result.getTotalRewards()));
+
+        verify(rewardRepository).findByCustomer_Id(1L);
+    }
+
+    @Test
+    void getRewardsByCustomerId_ValidDateRange_ReturnsRewards() {
+
+        when(rewardRepository
+                .findByCustomer_IdAndTransactionDateBetween(anyLong(), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(List.of(transaction));
+
+        RewardDTO result = transactionService.getRewardsByCustomerId(
+                        1L,
+                        LocalDate.of(2026, 1, 1),
+                        LocalDate.of(2026, 12, 31));
+
+        assertEquals(0, BigDecimal.valueOf(90).compareTo(result.getTotalRewards()));
+    }
+
+    @Test
+    void getRewardsByCustomerId_CustomerNotFound_ThrowsException() {
+
+        when(rewardRepository.findByCustomer_Id(1L)).thenReturn(Collections.emptyList());
+
+        RewardException ex = assertThrows(RewardException.class,
+                () -> transactionService.getRewardsByCustomerId(
+                        1L,
+                        null,
+                        null));
+
+        assertEquals("Customer not found", ex.getMessage());
+    }
+
+    @Test
+    void getRewardsByCustomerId_StartDateNull_ThrowsException() {
+
+        RewardException ex = assertThrows(RewardException.class,
+                () -> transactionService.getRewardsByCustomerId(
+                        1L,
+                        null,
+                        LocalDate.now()));
+
+        assertEquals("Both start date and end date must be provided", ex.getMessage());
+    }
+
+    @Test
+    void getRewardsByCustomerId_EndDateNull_ThrowsException() {
+
+        RewardException ex = assertThrows(RewardException.class,
+                () -> transactionService.getRewardsByCustomerId(
+                        1L,
+                        LocalDate.now(),
+                        null));
+
+        assertEquals("Both start date and end date must be provided", ex.getMessage());
+    }
+
+    @Test
+    void getRewardsByCustomerId_StartDateAfterEndDate_ThrowsException() {
+
+        RewardException ex = assertThrows(RewardException.class,
+                () -> transactionService.getRewardsByCustomerId(
+                        1L,
+                        LocalDate.of(2026, 6, 1),
+                        LocalDate.of(2026, 5, 1)));
+
+        assertEquals("Start date cannot be after end date", ex.getMessage());
     }
 }

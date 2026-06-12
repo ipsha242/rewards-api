@@ -20,6 +20,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -62,10 +66,10 @@ public class RewardControllerTest {
         sampleRewardDTO = new RewardDTO();
         sampleRewardDTO.setCustomerId(101L);
         sampleRewardDTO.setCustomerName("John Doe");
-        sampleRewardDTO.setTotalRewards(150);
+        sampleRewardDTO.setTotalRewards(BigDecimal.valueOf(150));
 
-        Map<String, Integer> monthlyMap = new HashMap<>();
-        monthlyMap.put("MARCH", 150);
+        Map<String, BigDecimal> monthlyMap = new HashMap<>();
+        monthlyMap.put("MARCH", BigDecimal.valueOf(150));
         sampleRewardDTO.setMonthlyRewards(monthlyMap);
     }
 
@@ -102,5 +106,108 @@ public class RewardControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(rewardService, times(1)).getRewards();
+    }
+
+    @Test
+    void getRewardsByDateRange_ValidDates_ReturnsOk() throws Exception {
+
+        when(rewardService.getRewardsByDateRange(
+                LocalDate.of(2026, 3, 1),
+                LocalDate.of(2026, 5, 31))).thenReturn(List.of(sampleRewardDTO));
+
+        mockMvc.perform(get("/transaction/rewards/range")
+                        .param("startDate", "2026-03-01")
+                        .param("endDate", "2026-05-31")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].customerId").value(101))
+                .andExpect(jsonPath("$[0].customerName").value("John Doe"));
+
+        verify(rewardService, times(1))
+                .getRewardsByDateRange(
+                        LocalDate.of(2026, 3, 1),
+                        LocalDate.of(2026, 5, 31));
+    }
+
+    @Test
+    void getRewardsByDateRange_NoDates_ReturnsOk() throws Exception {
+
+        when(rewardService.getRewardsByDateRange(null, null)).thenReturn(List.of(sampleRewardDTO));
+
+        mockMvc.perform(get("/transaction/rewards/range")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        verify(rewardService, times(1)).getRewardsByDateRange(null, null);
+    }
+
+    @Test
+    void getRewardsByDateRange_ReturnsBadRequest() throws Exception {
+
+        when(rewardService.getRewardsByDateRange(any(LocalDate.class), any(LocalDate.class)))
+                .thenThrow(new RewardException("Start date cannot be after end date"));
+
+        mockMvc.perform(get("/transaction/rewards/range")
+                        .param("startDate", "2026-06-01")
+                        .param("endDate", "2026-05-01"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getRewardsByDateRange_endDateMissing_ReturnsBadRequest()
+            throws Exception {
+
+        when(rewardService.getRewardsByDateRange(any(), any()))
+                .thenThrow(new RewardException("Both start date and end date must be provided"));
+
+        mockMvc.perform(get("/transaction/rewards/range")
+                        .param("startDate", "2026-03-01"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getRewardsByDateRange_StartDateMissing_ReturnsBadRequest()
+            throws Exception {
+
+        when(rewardService.getRewardsByDateRange(any(), any()))
+                .thenThrow(new RewardException("Both start date and end date must be provided"));
+
+        mockMvc.perform(get("/transaction/rewards/range")
+                        .param("endDate", "2026-05-31"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getRewardsByCustomerId_ReturnsOk() throws Exception {
+
+        when(rewardService.getRewardsByCustomerId(eq(1L), isNull(), isNull()))
+                .thenReturn(sampleRewardDTO);
+
+        mockMvc.perform(get("/transaction/rewards/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.customerId").value(101));
+    }
+
+    @Test
+    void getRewardsByCustomerId_WithDateRange_ReturnsOk() throws Exception {
+
+        when(rewardService.getRewardsByCustomerId(eq(1L), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(sampleRewardDTO);
+
+        mockMvc.perform(get("/transaction/rewards/1")
+                                .param("startDate", "2026-01-01")
+                                .param("endDate", "2026-12-31"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getRewardsByCustomerId_ServiceThrowsException_ReturnsBadRequest()
+            throws Exception {
+
+        when(rewardService.getRewardsByCustomerId(anyLong(), any(), any()))
+                .thenThrow(new RewardException("Customer not found"));
+
+        mockMvc.perform(get("/transaction/rewards/999"))
+                .andExpect(status().isBadRequest());
     }
 }

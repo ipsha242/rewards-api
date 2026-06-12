@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,20 +26,10 @@ public class RewardServiceImpl implements RewardService {
     @Autowired
     private RewardRepository rewardRepository;
 
-    /**
-     * Saves a customer transaction.
-     *
-     * @param transaction transaction details to be saved
-     * @return saved transaction
-     */
-    @Override
-    public Transaction saveTransaction(Transaction transaction) {
-        return rewardRepository.save(transaction);
-    }
 
     /**
      * Calculates monthly and total reward points
-     * for all customers based on transaction history.
+     * for all customers based on last 3 months transaction history.
      *
      * @return list of customer rewards
      */
@@ -48,6 +39,102 @@ public class RewardServiceImpl implements RewardService {
         LocalDate startDate = endDate.minusMonths(3);
 
         List<Transaction> transactions = rewardRepository.findByTransactionDateBetween(startDate, endDate);
+
+        return processRewards(transactions);
+    }
+
+
+    /**
+     * Calculates monthly and total reward points
+     * for all customers based on the transaction history over a time range.
+     *
+     * @param startDate range start date
+     * @param endDate range end date
+     * @return customer reward summaries
+     */
+    @Override
+    public List<RewardDTO> getRewardsByDateRange(LocalDate startDate, LocalDate endDate) {
+        List<Transaction> transactions;
+
+        if (startDate == null && endDate == null) {
+            transactions = rewardRepository.findAll();
+        }
+        else if (startDate == null || endDate == null) {
+            throw new RewardException("Both start date and end date must be provided");
+        }
+        else {
+            if (startDate.isAfter(endDate)) {
+                throw new RewardException("Start date cannot be after end date");
+            }
+
+            transactions = rewardRepository.findByTransactionDateBetween(startDate, endDate);
+        }
+
+        return processRewards(transactions);
+    }
+
+    /**
+     * Calculates monthly and total reward points
+     * for each customer based on customerId over a time range.
+     *
+     * @param customerId customerId
+     * @param startDate range start date
+     * @param endDate range end date
+     * @return customer reward details
+     */
+    @Override
+    public RewardDTO getRewardsByCustomerId(Long customerId, LocalDate startDate, LocalDate endDate) {
+        List<Transaction> transactions;
+
+        if (startDate == null && endDate == null) {
+            transactions = rewardRepository.findByCustomer_Id(customerId);
+        }
+        else if (startDate == null || endDate == null) {
+            throw new RewardException("Both start date and end date must be provided");
+        }
+        else {
+            if (startDate.isAfter(endDate)) {
+                throw new RewardException("Start date cannot be after end date");
+            }
+
+            transactions = rewardRepository.findByCustomer_IdAndTransactionDateBetween(customerId, startDate, endDate);
+        }
+        if (transactions.isEmpty()) {
+            throw new RewardException("Customer not found");
+        }
+
+        RewardDTO response = new RewardDTO();
+
+        response.setCustomerId(customerId);
+        response.setCustomerName(transactions.get(0).getCustomer().getName());
+        response.setMonthlyRewards(new HashMap<>());
+        response.setTotalRewards(BigDecimal.ZERO);
+
+        for (Transaction transaction : transactions) {
+
+            BigDecimal points = calculateRewardPoints(transaction.getAmount());
+
+            String month = YearMonth
+                    .from(transaction.getTransactionDate())
+                    .toString();
+
+            Map<String, BigDecimal> monthlyRewards = response.getMonthlyRewards();
+
+            monthlyRewards.put(month, monthlyRewards.getOrDefault(month, BigDecimal.ZERO).add(points));
+
+            response.setTotalRewards(response.getTotalRewards().add(points));
+        }
+        return response;
+    }
+
+    /**
+     * Calculates monthly and total rewards
+     * for transactions within the given date range.
+     *
+     * @param transactions range start date
+     * @return customer reward summaries
+     */
+    private List<RewardDTO> processRewards(List<Transaction> transactions) {
 
         if (transactions.isEmpty()) {
             throw new RewardException("No transactions found");
@@ -60,59 +147,69 @@ public class RewardServiceImpl implements RewardService {
             if (transaction.getCustomer() == null) {
                 throw new RewardException("Customer cannot be empty");
             }
+
             if (transaction.getCustomer().getId() == 0) {
                 throw new RewardException("Customer ID cannot be empty");
             }
+
             if (transaction.getTransactionDate() == null) {
                 throw new RewardException("Transaction date is required");
             }
+
             if (transaction.getAmount().compareTo(BigDecimal.ZERO) < 0) {
                 throw new RewardException("Transaction amount cannot be negative");
             }
+
             Long customerId = transaction.getCustomer().getId();
 
             RewardDTO response = rewardsMap.get(customerId);
 
             if (response == null) {
-
                 response = new RewardDTO();
 
                 response.setCustomerId(customerId);
                 response.setCustomerName(transaction.getCustomer().getName());
                 response.setMonthlyRewards(new HashMap<>());
-                response.setTotalRewards(0);
+                response.setTotalRewards(BigDecimal.ZERO);
 
                 rewardsMap.put(customerId, response);
             }
 
-            int points = calculateRewardPoints(transaction.getAmount());
+            BigDecimal points = calculateRewardPoints(transaction.getAmount());
 
-            String month = transaction.getTransactionDate()
-                    .getMonth()
+            String month = YearMonth
+                    .from(transaction.getTransactionDate())
                     .toString();
 
-            Map<String, Integer> monthlyRewards = response.getMonthlyRewards();
+            Map<String, BigDecimal> monthlyRewards =
+                    response.getMonthlyRewards();
 
-            monthlyRewards.put(month, monthlyRewards.getOrDefault(month, 0) + points);
+            monthlyRewards.put(month, monthlyRewards.getOrDefault(month, BigDecimal.ZERO).add(points));
 
-            response.setTotalRewards(response.getTotalRewards() + points);
+            response.setTotalRewards(response.getTotalRewards().add(points));
         }
-
         return new ArrayList<>(rewardsMap.values());
     }
 
-    private int calculateRewardPoints(BigDecimal amount) {
+    /**
+     * Calculates reward points for a transaction.
+     *
+     * @param amount transaction amount
+     * @return reward points earned
+     */
+    private BigDecimal calculateRewardPoints(BigDecimal amount) {
 
-        int points = 0;
+        BigDecimal points = BigDecimal.ZERO;
 
         if (amount.compareTo(BigDecimal.valueOf(100)) > 0) {
 
-            points += 50;
-            points += (amount.intValue() - 100) * 2;
+            points = points.add(BigDecimal.valueOf(50));
+
+            points = points.add(amount.subtract(BigDecimal.valueOf(100)).multiply(BigDecimal.valueOf(2)));
 
         } else if (amount.compareTo(BigDecimal.valueOf(50)) > 0) {
 
-            points += amount.intValue() - 50;
+            points = points.add(amount.subtract(BigDecimal.valueOf(50)));
         }
         return points;
     }

@@ -17,4 +17,8 @@ public interface RewardRepository extends JpaRepository<Transaction, Long> {
     List<Transaction> findByTransactionDateBetween(
             LocalDate startDate,
             LocalDate endDate);
+
+    List<Transaction> findByCustomer_Id(Long customerId);
+
+    List<Transaction> findByCustomer_IdAndTransactionDateBetween(Long customerId, LocalDate startDate, LocalDate endDate);
 }
