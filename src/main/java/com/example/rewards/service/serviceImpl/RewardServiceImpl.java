@@ -5,6 +5,7 @@ import com.example.rewards.entity.Transaction;
 import com.example.rewards.exception.RewardException;
 import com.example.rewards.repository.RewardRepository;
 import com.example.rewards.service.RewardService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ import java.util.Map;
  * Implementation of reward related business operations.
  * Responsible for transaction management and reward point calculations.
  */
+@Slf4j
 @Service
 public class RewardServiceImpl implements RewardService {
 
@@ -38,8 +40,10 @@ public class RewardServiceImpl implements RewardService {
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusMonths(3);
 
+        log.info("Fetching transactions for default rolling 3-month period: {} to {}", startDate, endDate);
         List<Transaction> transactions = rewardRepository.findByTransactionDateBetween(startDate, endDate);
 
+        log.debug("Found {} raw transactions for the default rolling period.", transactions.size());
         return processRewards(transactions);
     }
 
@@ -57,19 +61,22 @@ public class RewardServiceImpl implements RewardService {
         List<Transaction> transactions;
 
         if (startDate == null && endDate == null) {
+            log.info("No date range provided. Falling back to fetching all historical transactions.");
             transactions = rewardRepository.findAll();
         }
         else if (startDate == null || endDate == null) {
+            log.warn("Validation failure: Partial date range provided. startDate={}, endDate={}", startDate, endDate);
             throw new RewardException("Both start date and end date must be provided");
         }
         else {
             if (startDate.isAfter(endDate)) {
+                log.warn("Validation failure: Start date {} is after end date {}", startDate, endDate);
                 throw new RewardException("Start date cannot be after end date");
             }
-
+            log.info("Fetching transactions for custom date range: {} to {}", startDate, endDate);
             transactions = rewardRepository.findByTransactionDateBetween(startDate, endDate);
         }
-
+        log.debug("Found {} raw transactions matching range query parameters.", transactions.size());
         return processRewards(transactions);
     }
 
@@ -85,24 +92,32 @@ public class RewardServiceImpl implements RewardService {
     @Override
     public RewardDTO getRewardsByCustomerId(Long customerId, LocalDate startDate, LocalDate endDate) {
         List<Transaction> transactions;
+        log.info("Processing target reward query for customerId: {}", customerId);
 
         if (startDate == null && endDate == null) {
+            log.debug("Fetching lifetime transactions for customerId: {}", customerId);
             transactions = rewardRepository.findByCustomer_Id(customerId);
         }
         else if (startDate == null || endDate == null) {
+            log.warn("Validation failure for customer {} query: Partial date range provided.", customerId);
             throw new RewardException("Both start date and end date must be provided");
         }
         else {
             if (startDate.isAfter(endDate)) {
+                log.warn("Validation failure for customer {} query: Start date {} is after end date {}", customerId, startDate, endDate);
                 throw new RewardException("Start date cannot be after end date");
             }
 
+            log.debug("Fetching transactions for customerId: {} within range: {} to {}", customerId, startDate, endDate);
             transactions = rewardRepository.findByCustomer_IdAndTransactionDateBetween(customerId, startDate, endDate);
         }
         if (transactions.isEmpty()) {
+            log.warn("Data anomaly: No transaction records found for customerId: {}", customerId);
             throw new RewardException("Customer not found");
         }
 
+        log.info("Compiling rewards data stream containing {} records for customer: '{}' (ID: {})",
+                transactions.size(), transactions.get(0).getCustomer().getName(), customerId);
         RewardDTO response = new RewardDTO();
 
         response.setCustomerId(customerId);
@@ -124,6 +139,7 @@ public class RewardServiceImpl implements RewardService {
 
             response.setTotalRewards(response.getTotalRewards().add(points));
         }
+        log.info("Completed processing for customerId: {}. Final aggregated total points: {}", customerId, response.getTotalRewards());
         return response;
     }
 
@@ -137,26 +153,32 @@ public class RewardServiceImpl implements RewardService {
     private List<RewardDTO> processRewards(List<Transaction> transactions) {
 
         if (transactions.isEmpty()) {
+            log.warn("Data evaluation halted: Input transactions collection is empty.");
             throw new RewardException("No transactions found");
         }
 
+        log.info("Beginning batch aggregation pipeline for {} global transactions.", transactions.size());
         Map<Long, RewardDTO> rewardsMap = new HashMap<>();
 
         for (Transaction transaction : transactions) {
 
             if (transaction.getCustomer() == null) {
+                log.error("Corrupted database row detected: Transaction ID {} has no linked Customer entity.", transaction.getId());
                 throw new RewardException("Customer cannot be empty");
             }
 
-            if (transaction.getCustomer().getId() == 0) {
+            if (transaction.getCustomer().getId() == null || transaction.getCustomer().getId() == 0) {
+                log.error("Corrupted database row detected: Transaction ID {} has an unassigned/zero Customer ID reference.", transaction.getId());
                 throw new RewardException("Customer ID cannot be empty");
             }
 
             if (transaction.getTransactionDate() == null) {
+                log.error("Corrupted database row detected: Transaction ID {} is missing a valid timestamp value.", transaction.getId());
                 throw new RewardException("Transaction date is required");
             }
 
             if (transaction.getAmount().compareTo(BigDecimal.ZERO) < 0) {
+                log.error("Corrupted database row detected: Transaction ID {} contains an invalid or negative amount: {}", transaction.getId(), transaction.getAmount());
                 throw new RewardException("Transaction amount cannot be negative");
             }
 
@@ -188,6 +210,7 @@ public class RewardServiceImpl implements RewardService {
 
             response.setTotalRewards(response.getTotalRewards().add(points));
         }
+        log.info("Batch aggregation completed successfully. Grouped and compiled profiles for {} distinct customers.", rewardsMap.size());
         return new ArrayList<>(rewardsMap.values());
     }
 

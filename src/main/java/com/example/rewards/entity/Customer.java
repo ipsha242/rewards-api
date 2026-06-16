@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,6 +26,7 @@ public class Customer {
     @Column(name = "customer_id")
     private Long id;
 
+    @NotBlank
     @Column(name = "customer_name", nullable = false)
     private String name;
 }

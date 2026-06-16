@@ -9,6 +9,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Column;
 import jakarta.persistence.FetchType;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -33,19 +35,17 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-//    @Column(name = "customer_id", nullable = false)
-//    private Long customerId;
-//
-//    @Column(name = "customer_name", nullable = false)
-//    private String customerName;
-
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+    @NotNull
     @Column(name = "amount", nullable = false)
+    @DecimalMin(value = "0.0", inclusive = false)
     private BigDecimal amount;
 
+    @NotNull
     @Column(name = "transaction_date", nullable = false)
     private LocalDate transactionDate;
 }
