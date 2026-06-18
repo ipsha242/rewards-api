@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +23,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/transaction")
+@Validated
 public class RewardController {
 
     @Autowired
@@ -68,7 +70,9 @@ public class RewardController {
      */
     @GetMapping("/rewards/{customerId}")
     public ResponseEntity<RewardDTO> getRewardsByCustomerId(
-            @PathVariable @NotNull @Positive Long customerId,
+            @PathVariable @NotNull(message = "Customer ID cannot be null")
+            @Positive(message = "Customer ID must be greater than zero")
+            Long customerId,
             @RequestParam(required = false) LocalDate startDate,
             @RequestParam(required = false) LocalDate endDate) {
 

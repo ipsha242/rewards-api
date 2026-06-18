@@ -1,8 +1,11 @@
 package com.example.rewards.service.serviceImpl;
 
 import com.example.rewards.dto.RewardDTO;
+import com.example.rewards.entity.Customer;
 import com.example.rewards.entity.Transaction;
+import com.example.rewards.exception.ResourceNotFoundException;
 import com.example.rewards.exception.RewardException;
+import com.example.rewards.repository.CustomerRepository;
 import com.example.rewards.repository.RewardRepository;
 import com.example.rewards.service.RewardService;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 
 /**
  * Implementation of reward related business operations.
@@ -27,6 +31,9 @@ public class RewardServiceImpl implements RewardService {
 
     @Autowired
     private RewardRepository rewardRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
 
 
     /**
@@ -91,8 +98,14 @@ public class RewardServiceImpl implements RewardService {
      */
     @Override
     public RewardDTO getRewardsByCustomerId(Long customerId, LocalDate startDate, LocalDate endDate) {
-        List<Transaction> transactions;
+
         log.info("Processing target reward query for customerId: {}", customerId);
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> {
+                    log.warn("Customer not found for customerId: {}", customerId);
+                    return new ResourceNotFoundException("Customer not found");
+                });
+        List<Transaction> transactions;
 
         if (startDate == null && endDate == null) {
             log.debug("Fetching lifetime transactions for customerId: {}", customerId);
@@ -112,10 +125,17 @@ public class RewardServiceImpl implements RewardService {
             transactions = rewardRepository.findByCustomer_IdAndTransactionDateBetween(customerId, startDate, endDate);
         }
         if (transactions.isEmpty()) {
-            log.warn("Data anomaly: No transaction records found for customerId: {}", customerId);
-            throw new RewardException("Customer not found");
-        }
+            log.info("Customer {} exists but has no transactions for the requested criteria.", customerId);
 
+            RewardDTO response = new RewardDTO();
+
+            response.setCustomerId(customerId);
+            response.setCustomerName(customer.getName());
+            response.setMonthlyRewards(new HashMap<>());
+            response.setTotalRewards(0L);
+
+            return response;
+        }
         log.info("Compiling rewards data stream containing {} records for customer: '{}' (ID: {})",
                 transactions.size(), transactions.get(0).getCustomer().getName(), customerId);
         RewardDTO response = new RewardDTO();
@@ -123,21 +143,21 @@ public class RewardServiceImpl implements RewardService {
         response.setCustomerId(customerId);
         response.setCustomerName(transactions.get(0).getCustomer().getName());
         response.setMonthlyRewards(new HashMap<>());
-        response.setTotalRewards(BigDecimal.ZERO);
+        response.setTotalRewards(0L);
 
         for (Transaction transaction : transactions) {
 
-            BigDecimal points = calculateRewardPoints(transaction.getAmount());
+            long points = calculateRewardPoints(transaction.getAmount());
 
             String month = YearMonth
                     .from(transaction.getTransactionDate())
                     .toString();
 
-            Map<String, BigDecimal> monthlyRewards = response.getMonthlyRewards();
+            Map<String, Long> monthlyRewards = response.getMonthlyRewards();
 
-            monthlyRewards.put(month, monthlyRewards.getOrDefault(month, BigDecimal.ZERO).add(points));
+            monthlyRewards.put(month, monthlyRewards.getOrDefault(month, 0L) + points);
 
-            response.setTotalRewards(response.getTotalRewards().add(points));
+            response.setTotalRewards(response.getTotalRewards() + points);
         }
         log.info("Completed processing for customerId: {}. Final aggregated total points: {}", customerId, response.getTotalRewards());
         return response;
@@ -153,8 +173,8 @@ public class RewardServiceImpl implements RewardService {
     private List<RewardDTO> processRewards(List<Transaction> transactions) {
 
         if (transactions.isEmpty()) {
-            log.warn("Data evaluation halted: Input transactions collection is empty.");
-            throw new RewardException("No transactions found");
+            log.warn("No transactions found.");
+            return Collections.emptyList();
         }
 
         log.info("Beginning batch aggregation pipeline for {} global transactions.", transactions.size());
@@ -192,23 +212,23 @@ public class RewardServiceImpl implements RewardService {
                 response.setCustomerId(customerId);
                 response.setCustomerName(transaction.getCustomer().getName());
                 response.setMonthlyRewards(new HashMap<>());
-                response.setTotalRewards(BigDecimal.ZERO);
+                response.setTotalRewards(0L);
 
                 rewardsMap.put(customerId, response);
             }
 
-            BigDecimal points = calculateRewardPoints(transaction.getAmount());
+            long points = calculateRewardPoints(transaction.getAmount());
 
             String month = YearMonth
                     .from(transaction.getTransactionDate())
                     .toString();
 
-            Map<String, BigDecimal> monthlyRewards =
+            Map<String, Long> monthlyRewards =
                     response.getMonthlyRewards();
 
-            monthlyRewards.put(month, monthlyRewards.getOrDefault(month, BigDecimal.ZERO).add(points));
+            monthlyRewards.put(month, monthlyRewards.getOrDefault(month, 0L) + points);
 
-            response.setTotalRewards(response.getTotalRewards().add(points));
+            response.setTotalRewards(response.getTotalRewards() + points);
         }
         log.info("Batch aggregation completed successfully. Grouped and compiled profiles for {} distinct customers.", rewardsMap.size());
         return new ArrayList<>(rewardsMap.values());
@@ -220,19 +240,21 @@ public class RewardServiceImpl implements RewardService {
      * @param amount transaction amount
      * @return reward points earned
      */
-    private BigDecimal calculateRewardPoints(BigDecimal amount) {
+    private long calculateRewardPoints(BigDecimal amount) {
 
-        BigDecimal points = BigDecimal.ZERO;
+        long points = 0L;
 
         if (amount.compareTo(BigDecimal.valueOf(100)) > 0) {
 
-            points = points.add(BigDecimal.valueOf(50));
-
-            points = points.add(amount.subtract(BigDecimal.valueOf(100)).multiply(BigDecimal.valueOf(2)));
+            points += 50;
+            points += amount.subtract(BigDecimal.valueOf(100))
+                    .multiply(BigDecimal.valueOf(2))
+                    .longValue();
 
         } else if (amount.compareTo(BigDecimal.valueOf(50)) > 0) {
 
-            points = points.add(amount.subtract(BigDecimal.valueOf(50)));
+            points += amount.subtract(BigDecimal.valueOf(50))
+                    .longValue();
         }
         return points;
     }

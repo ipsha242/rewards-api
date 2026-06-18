@@ -35,17 +35,17 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull
+    @NotNull(message = "Customer cannot be null")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
-    @NotNull
+    @NotNull(message = "Amount cannot be null")
     @Column(name = "amount", nullable = false)
-    @DecimalMin(value = "0.0", inclusive = false)
+    @DecimalMin(value = "0.0", inclusive = false, message = "Amount must be greater than zero")
     private BigDecimal amount;
 
-    @NotNull
+    @NotNull(message = "Transaction Date cannot be null")
     @Column(name = "transaction_date", nullable = false)
     private LocalDate transactionDate;
 }

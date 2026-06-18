@@ -45,4 +45,22 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    /**
+     * Handles resource not found exceptions.
+     *
+     * @param ex the thrown resource not found exception
+     * @return error response with HTTP 404 status
+     */
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFoundException(
+            ResourceNotFoundException ex) {
+
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.NOT_FOUND.value(),
+                LocalDateTime.now());
+
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
 }

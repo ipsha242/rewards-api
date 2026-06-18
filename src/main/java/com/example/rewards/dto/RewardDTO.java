@@ -7,7 +7,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.util.Map;
 
 /**
@@ -19,16 +18,16 @@ import java.util.Map;
 @AllArgsConstructor
 public class RewardDTO {
 
-    @NotNull
+    @NotNull(message = "Customer ID cannot be null")
     private Long customerId;
 
-    @NotBlank
+    @NotBlank(message = "Customer Name cannot be blank")
     private String customerName;
 
     @NotNull
-    private Map<String, BigDecimal> monthlyRewards;
+    private Map<String, Long> monthlyRewards;
 
-    @NotNull
-    @PositiveOrZero
-    private BigDecimal totalRewards;
+    @NotNull(message = "Total Rewards cannot be null")
+    @PositiveOrZero(message = "Total Rewards cannot be negative")
+    private Long totalRewards;
 }

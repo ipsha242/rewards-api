@@ -37,15 +37,15 @@ public class RewardControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(5))
 
-                .andExpect(jsonPath("$[?(@.customerId==1)].totalRewards").value(405.0))
+                .andExpect(jsonPath("$[?(@.customerId==1)].totalRewards").value(405))
 
-                .andExpect(jsonPath("$[?(@.customerId==2)].totalRewards").value(210.0))
+                .andExpect(jsonPath("$[?(@.customerId==2)].totalRewards").value(210))
 
-                .andExpect(jsonPath("$[?(@.customerId==3)].totalRewards").value(350.0))
+                .andExpect(jsonPath("$[?(@.customerId==3)].totalRewards").value(350))
 
-                .andExpect(jsonPath("$[?(@.customerId==4)].totalRewards").value(190.0))
+                .andExpect(jsonPath("$[?(@.customerId==4)].totalRewards").value(190))
 
-                .andExpect(jsonPath("$[?(@.customerId==5)].totalRewards").value(580.0));
+                .andExpect(jsonPath("$[?(@.customerId==5)].totalRewards").value(580));
     }
 
     @Test
@@ -66,5 +66,43 @@ public class RewardControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.customerId")
                                 .value(1));
+    }
+
+    @Test
+    void getRewardsByDateRange_StartDateAfterEndDate_ReturnsBadRequest()
+            throws Exception {
+
+        mockMvc.perform(get("/transaction/rewards/range")
+                        .param("startDate", "2026-06-01")
+                        .param("endDate", "2026-05-01"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getRewardsByDateRange_MissingEndDate_ReturnsBadRequest()
+            throws Exception {
+
+        mockMvc.perform(get("/transaction/rewards/range")
+                        .param("startDate", "2026-01-01"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getRewardsByCustomerId_CustomerNotFound_ReturnsNotFound()
+            throws Exception {
+
+        mockMvc.perform(get("/transaction/rewards/99999"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getRewardsByCustomerId_NoTransactionsForDateRange_ReturnsZeroRewards()
+            throws Exception {
+
+        mockMvc.perform(get("/transaction/rewards/1")
+                        .param("startDate", "2030-01-01")
+                        .param("endDate", "2030-12-31"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalRewards").value(0));
     }
 }

@@ -3,7 +3,9 @@ package com.example.rewards.service;
 import com.example.rewards.dto.RewardDTO;
 import com.example.rewards.entity.Customer;
 import com.example.rewards.entity.Transaction;
+import com.example.rewards.exception.ResourceNotFoundException;
 import com.example.rewards.exception.RewardException;
+import com.example.rewards.repository.CustomerRepository;
 import com.example.rewards.repository.RewardRepository;
 import com.example.rewards.service.serviceImpl.RewardServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,14 +14,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
@@ -36,6 +40,9 @@ public class RewardServiceImplTest {
 
     @Mock
     private RewardRepository rewardRepository;
+
+    @Mock
+    private CustomerRepository customerRepository;
 
     @InjectMocks
     private RewardServiceImpl transactionService;
@@ -68,8 +75,8 @@ public class RewardServiceImplTest {
         RewardDTO dto = result.get(0);
         assertEquals(1L, dto.getCustomerId());
         assertEquals("Alice", dto.getCustomerName());
-        assertEquals(0, BigDecimal.valueOf(90).compareTo(dto.getTotalRewards()));
-        assertEquals(0, BigDecimal.valueOf(90).compareTo(dto.getMonthlyRewards().get("2024-03")));
+        assertEquals(90L, dto.getTotalRewards());
+        assertEquals(90L, dto.getMonthlyRewards().get("2024-03"));
     }
 
     @Test
@@ -81,7 +88,7 @@ public class RewardServiceImplTest {
 
         List<RewardDTO> result = transactionService.getRewards();
 
-        assertEquals(0, BigDecimal.valueOf(25).compareTo(result.get(0).getTotalRewards()));
+        assertEquals(25L, result.get(0).getTotalRewards());
     }
 
     @Test
@@ -93,7 +100,7 @@ public class RewardServiceImplTest {
 
         List<RewardDTO> result = transactionService.getRewards();
 
-        assertEquals(0, BigDecimal.valueOf(50).compareTo(result.get(0).getTotalRewards()));
+        assertEquals(50L, result.get(0).getTotalRewards());
     }
 
     @Test
@@ -105,7 +112,7 @@ public class RewardServiceImplTest {
 
         List<RewardDTO> result = transactionService.getRewards();
 
-        assertEquals(0, BigDecimal.ZERO.compareTo(result.get(0).getTotalRewards()));
+        assertEquals(0L, result.get(0).getTotalRewards());
     }
 
     @Test
@@ -117,7 +124,7 @@ public class RewardServiceImplTest {
 
         List<RewardDTO> result = transactionService.getRewards();
 
-        assertEquals(0, BigDecimal.ZERO.compareTo(result.get(0).getTotalRewards()));
+        assertEquals(0L, result.get(0).getTotalRewards());
     }
 
     @Test
@@ -144,9 +151,9 @@ public class RewardServiceImplTest {
 
         assertEquals(1, result.size());
         RewardDTO dto = result.get(0);
-        assertEquals(0, BigDecimal.valueOf(115).compareTo(dto.getTotalRewards()));
-        assertEquals(0, BigDecimal.valueOf(90).compareTo(dto.getMonthlyRewards().get("2024-01")));
-        assertEquals(0, BigDecimal.valueOf(25).compareTo(dto.getMonthlyRewards().get("2024-02")));
+        assertEquals(115L, result.get(0).getTotalRewards());
+        assertEquals(90L, dto.getMonthlyRewards().get("2024-01"));
+        assertEquals(25L, dto.getMonthlyRewards().get("2024-02"));
     }
 
     @Test
@@ -171,8 +178,8 @@ public class RewardServiceImplTest {
 
         List<RewardDTO> result = transactionService.getRewards();
 
-        assertEquals(0, BigDecimal.valueOf(100).compareTo(result.get(0).getTotalRewards()));
-        assertEquals(0, BigDecimal.valueOf(100).compareTo(result.get(0).getMonthlyRewards().get("2024-03")));
+        assertEquals(100L, result.get(0).getTotalRewards());
+        assertEquals(100L, result.get(0).getMonthlyRewards().get("2024-03"));
     }
 
     @Test
@@ -196,14 +203,14 @@ public class RewardServiceImplTest {
     }
 
     @Test
-    void getRewards_noTransactions_throwsRewardException() {
-        when(rewardRepository.findByTransactionDateBetween(
-                any(LocalDate.class),
-                any(LocalDate.class))).thenReturn(Collections.emptyList());
+    void getRewards_noTransactions_ReturnsEmptyList() {
 
-        RewardException ex = assertThrows(RewardException.class,
-                () -> transactionService.getRewards());
-        assertEquals("No transactions found", ex.getMessage());
+        when(rewardRepository.findByTransactionDateBetween(any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(Collections.emptyList());
+
+        List<RewardDTO> result = transactionService.getRewards();
+
+        assertTrue(result.isEmpty());
     }
 
     @Test
@@ -299,7 +306,7 @@ public class RewardServiceImplTest {
                         LocalDate.of(2026, 5, 31));
 
         assertEquals(1, result.size());
-        assertEquals(0, BigDecimal.valueOf(90).compareTo(result.get(0).getTotalRewards()));
+        assertEquals(90L, result.get(0).getTotalRewards());
     }
 
     @Test
@@ -325,6 +332,7 @@ public class RewardServiceImplTest {
     @Test
     void getRewardsByCustomerId_ValidCustomer_ReturnsRewards() {
 
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
         when(rewardRepository.findByCustomer_Id(1L)).thenReturn(List.of(transaction));
 
         RewardDTO result = transactionService.getRewardsByCustomerId(
@@ -334,14 +342,14 @@ public class RewardServiceImplTest {
 
         assertEquals(1L, result.getCustomerId());
         assertEquals("Alice", result.getCustomerName());
-        assertEquals(0, BigDecimal.valueOf(90).compareTo(result.getTotalRewards()));
+        assertEquals(90L, result.getTotalRewards());
 
         verify(rewardRepository).findByCustomer_Id(1L);
     }
 
     @Test
     void getRewardsByCustomerId_ValidDateRange_ReturnsRewards() {
-
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
         when(rewardRepository
                 .findByCustomer_IdAndTransactionDateBetween(anyLong(), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(List.of(transaction));
@@ -351,19 +359,19 @@ public class RewardServiceImplTest {
                         LocalDate.of(2026, 1, 1),
                         LocalDate.of(2026, 12, 31));
 
-        assertEquals(0, BigDecimal.valueOf(90).compareTo(result.getTotalRewards()));
+        assertEquals(90L, result.getTotalRewards());
     }
 
     @Test
     void getRewardsByCustomerId_CustomerNotFound_ThrowsException() {
 
-        when(rewardRepository.findByCustomer_Id(1L)).thenReturn(Collections.emptyList());
+        when(customerRepository.findById(1L)).thenReturn(Optional.empty());
 
-        RewardException ex = assertThrows(RewardException.class,
-                () -> transactionService.getRewardsByCustomerId(
-                        1L,
-                        null,
-                        null));
+        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
+                        () -> transactionService.getRewardsByCustomerId(
+                                1L,
+                                null,
+                                null));
 
         assertEquals("Customer not found", ex.getMessage());
     }
@@ -371,6 +379,7 @@ public class RewardServiceImplTest {
     @Test
     void getRewardsByCustomerId_StartDateNull_ThrowsException() {
 
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
         RewardException ex = assertThrows(RewardException.class,
                 () -> transactionService.getRewardsByCustomerId(
                         1L,
@@ -383,6 +392,7 @@ public class RewardServiceImplTest {
     @Test
     void getRewardsByCustomerId_EndDateNull_ThrowsException() {
 
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
         RewardException ex = assertThrows(RewardException.class,
                 () -> transactionService.getRewardsByCustomerId(
                         1L,
@@ -395,6 +405,7 @@ public class RewardServiceImplTest {
     @Test
     void getRewardsByCustomerId_StartDateAfterEndDate_ThrowsException() {
 
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
         RewardException ex = assertThrows(RewardException.class,
                 () -> transactionService.getRewardsByCustomerId(
                         1L,
@@ -402,5 +413,22 @@ public class RewardServiceImplTest {
                         LocalDate.of(2026, 5, 1)));
 
         assertEquals("Start date cannot be after end date", ex.getMessage());
+    }
+
+    @Test
+    void getRewardsByCustomerId_ExistingCustomerNoTransactions_ReturnsZeroRewards() {
+
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(rewardRepository.findByCustomer_Id(1L)).thenReturn(Collections.emptyList());
+
+        RewardDTO result = transactionService.getRewardsByCustomerId(
+                        1L,
+                        null,
+                        null);
+
+        assertEquals(1L, result.getCustomerId());
+        assertEquals("Alice", result.getCustomerName());
+        assertEquals(0L, result.getTotalRewards());
+        assertTrue(result.getMonthlyRewards().isEmpty());
     }
 }

@@ -3,6 +3,7 @@ package com.example.rewards.controller;
 import com.example.rewards.dto.RewardDTO;
 import com.example.rewards.entity.Customer;
 import com.example.rewards.entity.Transaction;
+import com.example.rewards.exception.ResourceNotFoundException;
 import com.example.rewards.exception.RewardException;
 import com.example.rewards.service.RewardService;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,10 +64,10 @@ public class RewardControllerTest {
         sampleRewardDTO = new RewardDTO();
         sampleRewardDTO.setCustomerId(101L);
         sampleRewardDTO.setCustomerName("John Doe");
-        sampleRewardDTO.setTotalRewards(BigDecimal.valueOf(150));
+        sampleRewardDTO.setTotalRewards(150L);
 
-        Map<String, BigDecimal> monthlyMap = new HashMap<>();
-        monthlyMap.put("MARCH", BigDecimal.valueOf(150));
+        Map<String, Long> monthlyMap = new HashMap<>();
+        monthlyMap.put("MARCH", 150L);
         sampleRewardDTO.setMonthlyRewards(monthlyMap);
     }
 
@@ -198,13 +199,12 @@ public class RewardControllerTest {
     }
 
     @Test
-    void getRewardsByCustomerId_ServiceThrowsException_ReturnsBadRequest()
-            throws Exception {
+    void getRewardsByCustomerId_CustomerNotFound_ReturnsNotFound() throws Exception {
 
         when(rewardService.getRewardsByCustomerId(anyLong(), any(), any()))
-                .thenThrow(new RewardException("Customer not found"));
+                .thenThrow(new ResourceNotFoundException("Customer not found"));
 
         mockMvc.perform(get("/transaction/rewards/999"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 }
