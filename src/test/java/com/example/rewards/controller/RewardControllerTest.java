@@ -28,7 +28,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /**
  * Unit tests for RewardController.
@@ -206,5 +207,32 @@ public class RewardControllerTest {
 
         mockMvc.perform(get("/transaction/rewards/999"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getRewardsByCustomerId_NegativeCustomerId_ReturnsBadRequest() throws Exception {
+
+        mockMvc.perform(get("/transaction/rewards/-1"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getRewardsByCustomerId_ZeroCustomerId_ReturnsBadRequest() throws Exception {
+
+        mockMvc.perform(get("/transaction/rewards/0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getRewardsByCustomerId_WhenUnexpectedExceptionOccurs_ReturnsInternalServerError() throws Exception {
+
+        when(rewardService.getRewardsByCustomerId(anyLong(), any(), any()))
+                .thenThrow(new RuntimeException("Unexpected Error"));
+
+        mockMvc.perform(get("/transaction/rewards/1"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.message")
+                        .value("Something went wrong"));
     }
 }

@@ -137,11 +137,11 @@ public class RewardServiceImpl implements RewardService {
             return response;
         }
         log.info("Compiling rewards data stream containing {} records for customer: '{}' (ID: {})",
-                transactions.size(), transactions.get(0).getCustomer().getName(), customerId);
+                transactions.size(), customer.getName(), customerId);
         RewardDTO response = new RewardDTO();
 
         response.setCustomerId(customerId);
-        response.setCustomerName(transactions.get(0).getCustomer().getName());
+        response.setCustomerName(customer.getName());
         response.setMonthlyRewards(new HashMap<>());
         response.setTotalRewards(0L);
 
@@ -173,7 +173,7 @@ public class RewardServiceImpl implements RewardService {
     private List<RewardDTO> processRewards(List<Transaction> transactions) {
 
         if (transactions.isEmpty()) {
-            log.warn("No transactions found.");
+            log.info("No transactions matched the supplied search criteria.");
             return Collections.emptyList();
         }
 
@@ -251,11 +251,15 @@ public class RewardServiceImpl implements RewardService {
                     .multiply(BigDecimal.valueOf(2))
                     .longValue();
 
+            log.debug("Transaction amount {} earned {} reward points (above $100 tier)", amount, points);
         } else if (amount.compareTo(BigDecimal.valueOf(50)) > 0) {
 
             points += amount.subtract(BigDecimal.valueOf(50))
                     .longValue();
+
+            log.debug("Transaction amount {} earned {} reward points ($50-$100 tier)", amount, points);
         }
+        log.debug("Transaction amount {} earned 0 reward points (below reward threshold)", amount);
         return points;
     }
 }

@@ -105,4 +105,20 @@ public class RewardControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalRewards").value(0));
     }
+
+    @Test
+    void getRewardsByCustomerId_NegativeCustomerId_ReturnsBadRequest()
+            throws Exception {
+
+        mockMvc.perform(get("/transaction/rewards/-1"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getRewardsByCustomerId_ZeroCustomerId_ReturnsBadRequest()
+            throws Exception {
+
+        mockMvc.perform(get("/transaction/rewards/0"))
+                .andExpect(status().isBadRequest());
+    }
 }

@@ -431,4 +431,37 @@ public class RewardServiceImplTest {
         assertEquals(0L, result.getTotalRewards());
         assertTrue(result.getMonthlyRewards().isEmpty());
     }
+
+    @Test
+    void getRewards_customerIdNull_throwsRewardException() {
+
+        customer.setId(null);
+        transaction.setCustomer(customer);
+
+        when(rewardRepository.findByTransactionDateBetween(
+                any(LocalDate.class),
+                any(LocalDate.class)))
+                .thenReturn(List.of(transaction));
+
+        RewardException ex = assertThrows(RewardException.class,
+                () -> transactionService.getRewards());
+
+        assertEquals("Customer ID cannot be empty", ex.getMessage());
+    }
+
+    @Test
+    void getRewardsByDateRange_NoTransactions_ReturnsEmptyList() {
+
+        when(rewardRepository.findByTransactionDateBetween(
+                any(LocalDate.class),
+                any(LocalDate.class)))
+                .thenReturn(Collections.emptyList());
+
+        List<RewardDTO> result =
+                transactionService.getRewardsByDateRange(
+                        LocalDate.now().minusMonths(1),
+                        LocalDate.now());
+
+        assertTrue(result.isEmpty());
+    }
 }
